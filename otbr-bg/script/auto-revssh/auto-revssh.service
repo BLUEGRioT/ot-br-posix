@@ -1,0 +1,16 @@
+[Unit]
+Description= Autossh reverse: keep ssh tunnel to "revssh@auditkit.bluegriot.com" open
+Wants=network-online.target
+After=network-online.target ssh.target
+ 
+[Service]
+Type=forking
+EnvironmentFile=/etc/default/auto-revssh
+ExecStartPre=/bin/sleep 60
+ExecStart=/usr/bin/autossh $SSH_OPTIONS
+Restart=always
+RestartSec=60
+ 
+[Install]
+WantedBy=multi-user.target
+#################################################

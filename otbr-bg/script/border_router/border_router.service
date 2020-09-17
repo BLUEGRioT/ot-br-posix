@@ -1,0 +1,13 @@
+[Unit]
+Description=Thread border router autostart service
+After=wpantund.service
+ConditionPathExists=/usr/sbin/border_router
+ 
+[Service]
+ExecStartPre=/bin/sleep 10
+ExecStart=/usr/sbin/border_router
+RestartSec=5
+Restart=on-failure
+ 
+[Install]
+WantedBy=multi-user.target

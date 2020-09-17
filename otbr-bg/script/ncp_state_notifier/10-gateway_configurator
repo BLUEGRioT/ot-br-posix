@@ -1,0 +1,24 @@
+#!/bin/sh
+#
+# @note This file configures Border Router for Thread Network.
+#
+ 
+set -e
+ 
+ROLE=$1
+ 
+###############################################################################
+# Read configuration file.
+###############################################################################
+ 
+. /etc/border_router.conf
+ 
+###############################################################################
+# Configure default gateway
+###############################################################################
+ 
+if [ ${ROLE} = "router" ] || [ ${ROLE} = "leader" ]; then
+        ot-ctl prefix add ${thread_on_mesh_prefix} pasor
+        ot-ctl netdataregister
+        logger -t "ncp_state_notifier" "config-gateway with prefix ${thread_on_mesh_prefix}"
+fi

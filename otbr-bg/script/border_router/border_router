@@ -1,0 +1,36 @@
+#!/bin/sh
+#
+ 
+# @note This file configures Border Router for Thread Network.
+#
+ 
+set -e
+ 
+###############################################################################
+# Read configuration file.
+###############################################################################
+ 
+. /etc/border_router.conf
+ 
+###############################################################################
+# Attach to the Thread network.
+####################################################################
+ot-ctl thread stop
+ 
+ot-ctl ifconfig down
+ 
+ot-ctl masterkey $thread_master_key
+ot-ctl panid  $thread_panid
+ot-ctl extpanid $thread_xpanid
+ot-ctl channel $thread_channel
+ot-ctl networkname $thread_network_name
+ 
+ot-ctl ifconfig up
+ 
+ot-ctl thread start
+ 
+ot-ctl netdataregister
+ 
+sleep 5
+ 
+systemctl restart otbr-web.service
