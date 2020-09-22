@@ -263,7 +263,7 @@ Sur le RPI générer une clé privé ssh (en root):
 ```bash
 sudo ssh-keygen -t rsa
 ```
-*N'entrez aucun nom de fichier/aucune passphrase.*
+*N'entrez aucun nom de fichier et aucune passphrase.*
 
 Cela va générer deux fichiers: 
 - /root/.ssh/id_rsa
@@ -278,10 +278,20 @@ Installer autossh:
 ```bash
 apt install autossh
 ```
+Copier le fichier [/ot-br-posix/otbr-bg/script/auto-revssh/auto_revssh.conf](https://github.com/BLUEGRioT/ot-br-posix/blob/Project/AuditKit/otbr-bg/script/auto-revssh/auto-revssh.conf) dans **etc/default/auto-revssh.conf**. 
 
-Copier le fichier [/ot-br-posix/otbr-bg/script/auto-revssh/auto_revssh.conf](https://github.com/BLUEGRioT/ot-br-posix/blob/Project/AuditKit/otbr-bg/script/auto-revssh/auto-revssh.conf) dans **etc/default/auto-revssh.conf**. Dans ce fichier il faudra configurer pour chaque border router un port spécifique (de 22000 à 22999), Le port utilisé ici pour cette configuration est 22000.
+Dans ce fichier il faudra changer deux paramètres à chaques nouveaux border router configurés:
 
-Copier le fichier [/ot-br-posix/otbr-bg/script/auto-revssh/auto_revssh.service](https://github.com/BLUEGRioT/ot-br-posix/blob/Project/AuditKit/otbr-bg/script/auto-revssh/auto-revssh.service) dans le dossier **/etc/systemd/system/auto-revssh.service**.
+- Le port de monitoring utilisé par autossh: 
+    
+    Il est spécifié par le paramètre **-M 20000**, pour chaques border router il faut incrémenter cette valeur de 2 (20002, 20004...). Explication dans [le manuel d'autossh](https://linux.die.net/man/1/autossh)
+
+- Le port utilisé pour la connection reverse ssh: 
+    
+     Il est spécifié par le paramètre  **-R \*:22000:127.0.0.1:22**, ici le port est 22000 (Plage autorisée 22000 à 22999). Pour cette valeur il faut incrémenter cette valeur de 1 pour chaques nouveaux border router.
+
+
+Ensuite copier le fichier [/ot-br-posix/otbr-bg/script/auto-revssh/auto_revssh.service](https://github.com/BLUEGRioT/ot-br-posix/blob/Project/AuditKit/otbr-bg/script/auto-revssh/auto-revssh.service) dans le dossier **/etc/systemd/system/auto-revssh.service**.
 
 Actualiser la configuration de systemd:
 ```bash
@@ -299,23 +309,22 @@ On peut désormais se connecter en ssh avec:
 ssh -p 22000 pi@auditkit.bluegriot.com
 ```
 ## Configuration du watchdog
-Installer watchdog
-
+Installer watchdog:
 ```bash
 sudo apt install watchdog
 ```
-Configurer le driver watchdog, ouvrir le fichier **/etc/watchdog.conf**. Décommenter / Modifier les lignes suivantes:
+Configurer le service daemon watchdog, ouvrir le fichier **/etc/watchdog.conf** et décommenter, modifier ou ajouter les lignes suivantes:
 
-```cmd
-interface = eth1
-max-load-1 = 24
-watchdog-device = /dev/watchdog
-watchdog-timeout = 15
-interval = 4
+```bash
+interface = eth1 #check si l'on reçois des paquet sur eth1
+max-load-1 = 24 #check la charge du cpu
+watchdog-device = /dev/watchdog #specifie le driver wtachdog utilisé 
+watchdog-timeout = 15 #délai d'attente
+interval = 4 #interval entre deux feed du watchdog
 realtime = yes
 priority = 1
 ```
-Ouvrir le fichier suivant **/etc/systemd/system.conf**. Décommenter / Modifier la ligne suivante :
+Ouvrir le fichier suivant **/etc/systemd/system.conf**  et décommenter, modifier ou ajouter la ligne suivante :
 
 ```bash
  RuntimeWatchdogSec=14
