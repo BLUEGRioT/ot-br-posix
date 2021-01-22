@@ -29,6 +29,7 @@ git clone https://github.com/BLUEGRioT/ot-br-posix.git
 Recupérer la branche **Projet/AuditKit**:
 
 ```bash
+cd ot-br-posix
 git checkout -b Project/AuditKit origin/Project/AuditKit
 ```
 
@@ -151,8 +152,14 @@ sudo systemctl enable border_router.service
 
 ## Configurer l'ajout automatique d'une route (on-mesh prefix) 
 1. Remplacer le fichier **/usr/sbin/ncp_state_notifier** avec celui ci : [ot-br-posix/otbr-bg/script/ncp_state_notifier/ncp_state_notifier](https://github.com/BLUEGRioT/ot-br-posix/blob/Project/AuditKit/otbr-bg/script/ncp_state_notifier/ncp_state_notifier)
+```bash
+sudo cp ./ot-br-posix/otbr-bg/script/ncp_state_notifier/ncp_state_notifier /usr/sbin/ncp_state_notifier
+```
 
 2. Copier le fichier [ot-br-posix/otbr-bg/script/ncp_state_notifier/10-gateway_configurator](https://github.com/BLUEGRioT/ot-br-posix/blob/Project/AuditKit/otbr-bg/script/ncp_state_notifier/10-gateway_configurator) dans **/etc/ncp_state_notifier/dispatcher.d/**
+```bash
+sudo cp ./ot-br-posix/otbr-bg/script/ncp_state_notifier/10-gateway_configurator /etc/ncp_state_notifier/dispatcher.d/
+```
 
 3. Rendre le script exécutable:
 
