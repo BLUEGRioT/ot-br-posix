@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#  Copyright (c) 2019, The OpenThread Authors.
+#  Copyright (c) 2020, The OpenThread Authors.
 #  All rights reserved.
 #
 #  Redistribution and use in source and binary forms, with or without
@@ -27,28 +27,29 @@
 #  POSSIBILITY OF SUCH DAMAGE.
 #
 
-[ -n "$BUILD_TARGET" ] || exit 0
+#
+# This script tests publishing single service with custom host name & address.
+#
 
-set -e
-
-codecov_upload()
-{
-    curl -s https://codecov.io/bash >codecov
-    chmod a+x codecov
-
-    # Assume gcov by default, and llvm-cov if CC is clang
-    if [[ -z $CC ]]; then
-        ./codecov
-    elif "$CC" --version | grep -q gcc; then
-        ./codecov
-    elif "$CC" --version | grep -q clang; then
-        ./codecov -x "llvm-cov gcov"
-    fi
-}
+# shellcheck source=tests/mdns/test_init
+. "$(dirname "$0")/test_init"
 
 main()
 {
-    codecov_upload
+    if [[ ${OTBR_MDNS} == 'mDNSResponder' ]]; then
+        start_publisher mc
+
+        dns_sd_check MultipleService11 _meshcop._udp 'custom-host-1.local.'
+        dns_sd_check MultipleService12 _meshcop._udp 'custom-host-1.local.'
+        dns_sd_check_host 'custom-host-1.local.' '2002:0000:0000:0000:0000:0000:0000:0001'
+
+        dns_sd_check MultipleService21 _meshcop._udp 'custom-host-2.local.'
+        dns_sd_check MultipleService22 _meshcop._udp 'custom-host-2.local.'
+        dns_sd_check_host 'custom-host-2.local.' '2002:0000:0000:0000:0000:0000:0000:0001'
+    else
+        #TODO:
+        echo "not implemented yet"
+    fi
 }
 
 main "$@"

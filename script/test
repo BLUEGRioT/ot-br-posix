@@ -132,6 +132,18 @@ do_check()
         && CTEST_OUTPUT_ON_FAILURE=1 ninja test)
 }
 
+do_doxygen()
+{
+    otbr_options=(
+        "-DOTBR_DOC=ON"
+    )
+
+    (mkdir -p "${OTBR_TOP_BUILDDIR}" \
+        && cd "${OTBR_TOP_BUILDDIR}" \
+        && cmake -GNinja "${OTBR_TOP_SRCDIR}" "${otbr_options[@]}" \
+        && ninja doxygen)
+}
+
 do_prepare()
 {
     if [[ ${OTBR_OPTIONS} ]]; then
@@ -147,7 +159,10 @@ do_prepare()
     if [[ ${OTBR_COVERAGE} == 1 ]]; then
         otbr_options+=("-DOTBR_COVERAGE=ON")
     fi
-    if [[ ${OTBR_REST} == "rest" ]]; then
+
+    if [[ ${OTBR_REST} == "rest-off" ]]; then
+        otbr_options+=("-DOTBR_REST=OFF")
+    else
         otbr_options+=("-DOTBR_REST=ON")
     fi
 }
@@ -158,7 +173,6 @@ do_package()
         "-DBUILD_TESTING=OFF"
         "-DCMAKE_INSTALL_PREFIX=/usr"
         "-DCMAKE_BUILD_TYPE=Release"
-        "-DOTBR_REST=ON"
         "-DOTBR_WEB=ON"
         ${otbr_options[@]+"${otbr_options[@]}"}
     )
@@ -187,6 +201,9 @@ main()
                 ;;
             clean)
                 do_clean
+                ;;
+            doxygen)
+                do_doxygen
                 ;;
             help)
                 print_usage

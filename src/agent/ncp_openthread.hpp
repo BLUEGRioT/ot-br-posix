@@ -37,6 +37,8 @@
 #include <chrono>
 #include <memory>
 
+#include <openthread/backbone_router_ftd.h>
+#include <openthread/cli.h>
 #include <openthread/instance.h>
 #include <openthread/openthread-system.h>
 
@@ -56,11 +58,12 @@ public:
     /**
      * This constructor initializes this object.
      *
-     * @param[in]   aInterfaceName  A string of the NCP interface name.
-     * @param[in]   aRadioUrl       The URL describes the radio chip.
+     * @param[in]   aInterfaceName          A string of the NCP interface name.
+     * @param[in]   aRadioUrl               The URL describes the radio chip.
+     * @param[in]   aBackboneInterfaceName  The Backbone network interface name.
      *
      */
-    ControllerOpenThread(const char *aInterfaceName, const char *aRadioUrl);
+    ControllerOpenThread(const char *aInterfaceName, const char *aRadioUrl, const char *aBackboneInterfaceName);
 
     /**
      * This method initalize the NCP controller.
@@ -153,6 +156,23 @@ private:
         static_cast<ControllerOpenThread *>(aContext)->HandleStateChanged(aFlags);
     }
     void HandleStateChanged(otChangedFlags aFlags);
+
+    static void HandleBackboneRouterDomainPrefixEvent(void *                            aContext,
+                                                      otBackboneRouterDomainPrefixEvent aEvent,
+                                                      const otIp6Prefix *               aDomainPrefix);
+    void        HandleBackboneRouterDomainPrefixEvent(otBackboneRouterDomainPrefixEvent aEvent,
+                                                      const otIp6Prefix *               aDomainPrefix);
+
+    static void HandleBackboneRouterNdProxyEvent(void *                       aContext,
+                                                 otBackboneRouterNdProxyEvent aEvent,
+                                                 const otIp6Address *         aAddress);
+    void        HandleBackboneRouterNdProxyEvent(otBackboneRouterNdProxyEvent aEvent, const otIp6Address *aAddress);
+
+    static void HandleBackboneRouterMulticastListenerEvent(void *                                 aContext,
+                                                           otBackboneRouterMulticastListenerEvent aEvent,
+                                                           const otIp6Address *                   aAddress);
+    void        HandleBackboneRouterMulticastListenerEvent(otBackboneRouterMulticastListenerEvent aEvent,
+                                                           const otIp6Address *                   aAddress);
 
     otInstance *mInstance;
 

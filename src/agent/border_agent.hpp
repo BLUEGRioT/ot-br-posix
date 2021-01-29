@@ -36,8 +36,13 @@
 
 #include <stdint.h>
 
+#include "agent/instance_params.hpp"
 #include "agent/ncp.hpp"
 #include "mdns/mdns.hpp"
+
+#if OTBR_ENABLE_BACKBONE_ROUTER
+#include "backbone_router/backbone_agent.hpp"
+#endif
 
 namespace otbr {
 
@@ -111,11 +116,11 @@ private:
      */
     void Stop(void);
 
-    static void HandleMdnsState(void *aContext, Mdns::State aState)
+    static void HandleMdnsState(void *aContext, Mdns::Publisher::State aState)
     {
         static_cast<BorderAgent *>(aContext)->HandleMdnsState(aState);
     }
-    void HandleMdnsState(Mdns::State aState);
+    void HandleMdnsState(Mdns::Publisher::State aState);
     void PublishService(void);
     void StartPublishService(void);
     void StopPublishService(void);
@@ -134,6 +139,9 @@ private:
 
     Mdns::Publisher *mPublisher;
     Ncp::Controller *mNcp;
+#if OTBR_ENABLE_BACKBONE_ROUTER
+    BackboneRouter::BackboneAgent mBackboneAgent;
+#endif
 
     uint8_t  mExtPanId[kSizeExtPanId];
     bool     mExtPanIdInitialized;

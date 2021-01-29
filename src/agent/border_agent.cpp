@@ -46,6 +46,7 @@
 
 #include "agent/border_agent.hpp"
 #include "agent/ncp.hpp"
+#include "agent/ncp_openthread.hpp"
 #include "agent/uris.hpp"
 #include "common/code_utils.hpp"
 #include "common/logging.hpp"
@@ -82,11 +83,14 @@ enum
 
 BorderAgent::BorderAgent(Ncp::Controller *aNcp)
 #if OTBR_ENABLE_MDNS_AVAHI || OTBR_ENABLE_MDNS_MDNSSD || OTBR_ENABLE_MDNS_MOJO
-    : mPublisher(Mdns::Publisher::Create(AF_UNSPEC, nullptr, nullptr, HandleMdnsState, this))
+    : mPublisher(Mdns::Publisher::Create(AF_UNSPEC, /* aDomain */ nullptr, HandleMdnsState, this))
 #else
     : mPublisher(nullptr)
 #endif
     , mNcp(aNcp)
+#if OTBR_ENABLE_BACKBONE_ROUTER
+    , mBackboneAgent(*reinterpret_cast<Ncp::ControllerOpenThread *>(aNcp))
+#endif
     , mThreadStarted(false)
 {
 }
@@ -106,8 +110,12 @@ void BorderAgent::Init(void)
     mNcp->On(Ncp::kEventThreadState, HandleThreadState, this);
     mNcp->On(Ncp::kEventPSKc, HandlePSKc, this);
 
-    otbrLogResult("Check if Thread is up", mNcp->RequestEvent(Ncp::kEventThreadState));
-    otbrLogResult("Check if PSKc is initialized", mNcp->RequestEvent(Ncp::kEventPSKc));
+#if OTBR_ENABLE_BACKBONE_ROUTER
+    mBackboneAgent.Init();
+#endif
+
+    otbrLogResult(mNcp->RequestEvent(Ncp::kEventThreadState), "Check if Thread is up");
+    otbrLogResult(mNcp->RequestEvent(Ncp::kEventPSKc), "Check if PSKc is initialized");
 }
 
 otbrError BorderAgent::Start(void)
@@ -131,7 +139,7 @@ otbrError BorderAgent::Start(void)
     ExitNow();
 
 exit:
-    otbrLogResult("Start Thread Border Agent", error);
+    otbrLogResult(error, "Start Thread Border Agent");
     return error;
 }
 
@@ -153,11 +161,11 @@ BorderAgent::~BorderAgent(void)
     }
 }
 
-void BorderAgent::HandleMdnsState(Mdns::State aState)
+void BorderAgent::HandleMdnsState(Mdns::Publisher::State aState)
 {
     switch (aState)
     {
-    case Mdns::kStateReady:
+    case Mdns::Publisher::State::kReady:
         PublishService();
         break;
     default:
@@ -172,6 +180,10 @@ void BorderAgent::UpdateFdSet(fd_set & aReadFdSet,
                               int &    aMaxFd,
                               timeval &aTimeout)
 {
+#if OTBR_ENABLE_BACKBONE_ROUTER
+    mBackboneAgent.UpdateFdSet(aReadFdSet, aWriteFdSet, aErrorFdSet, aMaxFd, aTimeout);
+#endif
+
     if (mPublisher != nullptr)
     {
         mPublisher->UpdateFdSet(aReadFdSet, aWriteFdSet, aErrorFdSet, aMaxFd, aTimeout);
@@ -180,6 +192,9 @@ void BorderAgent::UpdateFdSet(fd_set & aReadFdSet,
 
 void BorderAgent::Process(const fd_set &aReadFdSet, const fd_set &aWriteFdSet, const fd_set &aErrorFdSet)
 {
+#if OTBR_ENABLE_BACKBONE_ROUTER
+    mBackboneAgent.Process(aReadFdSet, aWriteFdSet, aErrorFdSet);
+#endif
     if (mPublisher != nullptr)
     {
         mPublisher->Process(aReadFdSet, aWriteFdSet, aErrorFdSet);
@@ -202,19 +217,15 @@ static const char *ThreadVersionToString(uint16_t aThreadVersion)
 
 void BorderAgent::PublishService(void)
 {
-    const char *versionString = ThreadVersionToString(mThreadVersion);
-
     assert(mNetworkName[0] != '\0');
     assert(mExtPanIdInitialized);
-
     assert(mThreadVersion != 0);
-    // clang-format off
-    mPublisher->PublishService(kBorderAgentUdpPort, mNetworkName, kBorderAgentServiceType,
-        "nn", mNetworkName, strlen(mNetworkName),
-        "xp", &mExtPanId, sizeof(mExtPanId),
-        "tv", versionString, strlen(versionString),
-        nullptr);
-    // clang-format on
+
+    const char *             versionString = ThreadVersionToString(mThreadVersion);
+    Mdns::Publisher::TxtList txtList{{"nn", mNetworkName}, {"xp", mExtPanId, sizeof(mExtPanId)}, {"tv", versionString}};
+
+    mPublisher->PublishService(/* aHostName */ nullptr, kBorderAgentUdpPort, mNetworkName, kBorderAgentServiceType,
+                               txtList);
 }
 
 void BorderAgent::StartPublishService(void)

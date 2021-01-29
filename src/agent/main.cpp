@@ -28,7 +28,9 @@
 
 #include <openthread-br/config.h>
 
+#include <fstream>
 #include <mutex>
+#include <sstream>
 #include <thread>
 
 #include <errno.h>
@@ -71,24 +73,27 @@ static const char kDefaultInterfaceName[] = "wpan0";
 
 enum
 {
-    OTBR_OPT_DEBUG_LEVEL    = 'd',
-    OTBR_OPT_HELP           = 'h',
-    OTBR_OPT_INTERFACE_NAME = 'I',
-    OTBR_OPT_VERBOSE        = 'v',
-    OTBR_OPT_VERSION        = 'V',
-    OTBR_OPT_SHORTMAX       = 128,
+    OTBR_OPT_BACKBONE_INTERFACE_NAME = 'B',
+    OTBR_OPT_DEBUG_LEVEL             = 'd',
+    OTBR_OPT_HELP                    = 'h',
+    OTBR_OPT_INTERFACE_NAME          = 'I',
+    OTBR_OPT_VERBOSE                 = 'v',
+    OTBR_OPT_VERSION                 = 'V',
+    OTBR_OPT_SHORTMAX                = 128,
     OTBR_OPT_RADIO_VERSION,
 };
 
 // Default poll timeout.
 static const struct timeval kPollTimeout = {10, 0};
-static const struct option  kOptions[]   = {{"debug-level", required_argument, nullptr, OTBR_OPT_DEBUG_LEVEL},
-                                         {"help", no_argument, nullptr, OTBR_OPT_HELP},
-                                         {"thread-ifname", required_argument, nullptr, OTBR_OPT_INTERFACE_NAME},
-                                         {"verbose", no_argument, nullptr, OTBR_OPT_VERBOSE},
-                                         {"version", no_argument, nullptr, OTBR_OPT_VERSION},
-                                         {"radio-version", no_argument, nullptr, OTBR_OPT_RADIO_VERSION},
-                                         {0, 0, 0, 0}};
+static const struct option  kOptions[]   = {
+    {"backbone-ifname", required_argument, nullptr, OTBR_OPT_BACKBONE_INTERFACE_NAME},
+    {"debug-level", required_argument, nullptr, OTBR_OPT_DEBUG_LEVEL},
+    {"help", no_argument, nullptr, OTBR_OPT_HELP},
+    {"thread-ifname", required_argument, nullptr, OTBR_OPT_INTERFACE_NAME},
+    {"verbose", no_argument, nullptr, OTBR_OPT_VERBOSE},
+    {"version", no_argument, nullptr, OTBR_OPT_VERSION},
+    {"radio-version", no_argument, nullptr, OTBR_OPT_RADIO_VERSION},
+    {0, 0, 0, 0}};
 
 static void HandleSignal(int aSignal)
 {
@@ -97,17 +102,17 @@ static void HandleSignal(int aSignal)
 
 static int Mainloop(otbr::AgentInstance &aInstance, const char *aInterfaceName)
 {
-    int error = EXIT_FAILURE;
+    int                   error         = EXIT_FAILURE;
+    ControllerOpenThread &ncpOpenThread = static_cast<ControllerOpenThread &>(aInstance.GetNcp());
+
 #if OTBR_ENABLE_DBUS_SERVER
-    ControllerOpenThread *     ncpOpenThread = reinterpret_cast<ControllerOpenThread *>(&aInstance.GetNcp());
-    std::unique_ptr<DBusAgent> dbusAgent     = std::unique_ptr<DBusAgent>(new DBusAgent(aInterfaceName, ncpOpenThread));
+    std::unique_ptr<DBusAgent> dbusAgent = std::unique_ptr<DBusAgent>(new DBusAgent(aInterfaceName, &ncpOpenThread));
     dbusAgent->Init();
 #else
     (void)aInterfaceName;
 #endif
 #if OTBR_ENABLE_REST_SERVER
-    ControllerOpenThread *ncpOpenThreadRest = reinterpret_cast<ControllerOpenThread *>(&aInstance.GetNcp());
-    RestWebServer *       restServer        = RestWebServer::GetRestWebServer(ncpOpenThreadRest);
+    RestWebServer *restServer = RestWebServer::GetRestWebServer(&ncpOpenThread);
     restServer->Init();
 #endif
     otbrLog(OTBR_LOG_INFO, "Border router agent started.");
@@ -145,13 +150,11 @@ static int Mainloop(otbr::AgentInstance &aInstance, const char *aInterfaceName)
         rval = select(mainloop.mMaxFd + 1, &mainloop.mReadFdSet, &mainloop.mWriteFdSet, &mainloop.mErrorFdSet,
                       &mainloop.mTimeout);
 
-#if OTBR_ENABLE_DBUS_SERVER
-        if (ncpOpenThread->IsResetRequested())
+        if (ncpOpenThread.IsResetRequested())
         {
-            ncpOpenThread->Reset();
+            ncpOpenThread.Reset();
             continue;
         }
-#endif
 
         if (rval >= 0)
         {
@@ -208,20 +211,27 @@ static void OnAllocateFailed(void)
 
 int main(int argc, char *argv[])
 {
-    int                    logLevel = OTBR_LOG_INFO;
-    int                    opt;
-    int                    ret               = EXIT_SUCCESS;
-    const char *           interfaceName     = kDefaultInterfaceName;
-    otbr::Ncp::Controller *ncp               = nullptr;
-    bool                   verbose           = false;
-    bool                   printRadioVersion = false;
+    int                              logLevel = OTBR_LOG_INFO;
+    int                              opt;
+    int                              ret                   = EXIT_SUCCESS;
+    const char *                     interfaceName         = kDefaultInterfaceName;
+    const char *                     backboneInterfaceName = "";
+    otbr::Ncp::Controller *          ncp                   = nullptr;
+    otbr::Ncp::ControllerOpenThread *ncpOpenThread         = nullptr;
+    otbr::Ncp::PowerMap              powerMap;
+    bool                             verbose           = false;
+    bool                             printRadioVersion = false;
 
     std::set_new_handler(OnAllocateFailed);
 
-    while ((opt = getopt_long(argc, argv, "d:hI:Vv", kOptions, nullptr)) != -1)
+    while ((opt = getopt_long(argc, argv, "B:d:hI:Vv", kOptions, nullptr)) != -1)
     {
         switch (opt)
         {
+        case OTBR_OPT_BACKBONE_INTERFACE_NAME:
+            backboneInterfaceName = optarg;
+            break;
+
         case OTBR_OPT_DEBUG_LEVEL:
             logLevel = atoi(optarg);
             VerifyOrExit(logLevel >= OTBR_LOG_EMERG && logLevel <= OTBR_LOG_DEBUG, ret = EXIT_FAILURE);
@@ -260,28 +270,29 @@ int main(int argc, char *argv[])
     otbrLog(OTBR_LOG_INFO, "Running %s", OTBR_PACKAGE_VERSION);
     VerifyOrExit(optind < argc, ret = EXIT_FAILURE);
 
-    ncp = otbr::Ncp::Controller::Create(interfaceName, argv[optind]);
+    ncp           = otbr::Ncp::Controller::Create(interfaceName, argv[optind], backboneInterfaceName);
+    ncpOpenThread = static_cast<ControllerOpenThread *>(ncp);
     VerifyOrExit(ncp != nullptr, ret = EXIT_FAILURE);
 
     otbrLog(OTBR_LOG_INFO, "Thread interface %s", interfaceName);
+    otbrLog(OTBR_LOG_INFO, "Backbone interface %s", backboneInterfaceName);
 
     {
         otbr::AgentInstance instance(ncp);
+
+        otbr::InstanceParams::Get().SetThreadIfName(interfaceName);
+        otbr::InstanceParams::Get().SetBackboneIfName(backboneInterfaceName);
 
         SuccessOrExit(ret = instance.Init());
 
         if (printRadioVersion)
         {
-            ControllerOpenThread *ncpOpenThread = reinterpret_cast<ControllerOpenThread *>(ncp);
-
             PrintRadioVersion(ncpOpenThread->GetInstance());
             ExitNow(ret = EXIT_SUCCESS);
         }
 
 #if OTBR_ENABLE_OPENWRT
-        ControllerOpenThread *ncpThread = reinterpret_cast<ControllerOpenThread *>(ncp);
-
-        UbusServerInit(ncpThread, &sThreadMutex);
+        UbusServerInit(ncpOpenThread, &sThreadMutex);
         std::thread(UbusServerRun).detach();
 #endif
         SuccessOrExit(ret = Mainloop(instance, interfaceName));

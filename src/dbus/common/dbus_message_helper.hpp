@@ -26,6 +26,11 @@
  *    POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file
+ * This file includes utilities for manipulate d-bus message.
+ */
+
 #ifndef DBUS_MESSAGE_HELPER_HPP_
 #define DBUS_MESSAGE_HELPER_HPP_
 
@@ -86,7 +91,7 @@ template <> struct DBusTypeTrait<MacCounters>
 template <> struct DBusTypeTrait<LinkModeConfig>
 {
     // struct of four booleans
-    static constexpr const char *TYPE_AS_STRING = "(bbbb)";
+    static constexpr const char *TYPE_AS_STRING = "(bbb)";
 };
 
 template <> struct DBusTypeTrait<std::vector<uint8_t>>
@@ -134,23 +139,22 @@ template <> struct DBusTypeTrait<std::vector<ChannelQuality>>
 template <> struct DBusTypeTrait<NeighborInfo>
 {
     // struct of { uint64, uint32, uint16, uint32, uint32, uint8,
-    //             uint8, uint8, uint16, uint16, bool, bool, bool, bool, bool }
-    static constexpr const char *TYPE_AS_STRING = "(tuquuyyyqqbbbbb)";
+    //             uint8, uint8, uint16, uint16, bool, bool, bool, bool }
+    static constexpr const char *TYPE_AS_STRING = "(tuquuyyyqqbbbb)";
 };
 
 template <> struct DBusTypeTrait<std::vector<NeighborInfo>>
 {
     // array of struct of { uint64, uint32, uint16, uint32, uint32, uint8,
-    //                      uint8, uint8, uint16, uint16, bool, bool, bool, bool }
-    static constexpr const char *TYPE_AS_STRING = "a(tuquuyyyqqbbbbb)";
+    //                      uint8, uint8, uint16, uint16, bool, bool, bool }
+    static constexpr const char *TYPE_AS_STRING = "a(tuquuyyyqqbbbb)";
 };
 
 template <> struct DBusTypeTrait<ChildInfo>
 {
     // struct of { uint64, uint32, uint32, uint16, uint16, uint8, uint8,
-    //             uint8, uint8, uint16, uint16, bool, bool, bool, bool,
-    //             bool}
-    static constexpr const char *TYPE_AS_STRING = "(tuuqqyyyyqqbbbbb)";
+    //             uint8, uint8, uint16, uint16, bool, bool, bool, bool }
+    static constexpr const char *TYPE_AS_STRING = "(tuuqqyyyyqqbbbb)";
 };
 
 template <> struct DBusTypeTrait<ActiveScanResult>
@@ -169,9 +173,8 @@ template <> struct DBusTypeTrait<ChannelQuality>
 template <> struct DBusTypeTrait<std::vector<ChildInfo>>
 {
     // array of struct of { uint64, uint32, uint32, uint16, uint16, uint8, uint8,
-    //                      uint8, uint8, uint16, uint16, bool, bool, bool, bool,
-    //                      bool}
-    static constexpr const char *TYPE_AS_STRING = "a(tuuqqyyyyqqbbbbb)";
+    //                      uint8, uint8, uint16, uint16, bool, bool, bool, bool }
+    static constexpr const char *TYPE_AS_STRING = "a(tuuqqyyyyqqbbbb)";
 };
 
 template <> struct DBusTypeTrait<int8_t>
@@ -584,6 +587,8 @@ otbrError DBusMessageToTuple(UniqueDBusMessage const &aMessage, std::tuple<Field
 {
     return DBusMessageToTuple(*aMessage.get(), aValues);
 }
+
+bool IsDBusMessageEmpty(DBusMessage &aMessage);
 
 } // namespace DBus
 } // namespace otbr

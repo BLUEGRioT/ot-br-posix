@@ -30,6 +30,7 @@
 readonly OTBR_TOP_BUILDDIR="${BUILD_DIR}/otbr"
 readonly OTBR_TOP_SRCDIR="$PWD"
 readonly OTBR_OPTIONS="${OTBR_OPTIONS:-}"
+readonly REFERENCE_DEVICE="${REFERENCE_DEVICE:-0}"
 
 otbr_uninstall()
 {
@@ -68,6 +69,19 @@ otbr_install()
         "-DOTBR_REST=ON"
         "${otbr_options[@]}"
     )
+
+    if [[ ${REFERENCE_DEVICE} == "1" ]]; then
+        otbr_options+=(
+            "-DOT_REFERENCE_DEVICE=ON"
+            "-DOT_DHCP6_CLIENT=ON"
+            "-DOT_DHCP6_SERVER=ON"
+        )
+    fi
+    if with BACKBONE_ROUTER; then
+        otbr_options+=(
+            "-DOTBR_BACKBONE_ROUTER=ON"
+        )
+    fi
 
     (mkdir -p "${OTBR_TOP_BUILDDIR}" \
         && cd "${OTBR_TOP_BUILDDIR}" \

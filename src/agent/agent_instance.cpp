@@ -55,7 +55,7 @@ otbrError AgentInstance::Init(void)
     mBorderAgent.Init();
 
 exit:
-    otbrLogResult("Initialize OpenThread Border Router Agent", error);
+    otbrLogResult(error, "Initialize OpenThread Border Router Agent");
     return error;
 }
 

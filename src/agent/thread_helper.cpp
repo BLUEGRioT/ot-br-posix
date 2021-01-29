@@ -207,7 +207,9 @@ void ThreadHelper::Attach(const std::string &         aNetworkName,
     }
     else
     {
-        while (aExtPanId != UINT64_MAX)
+        *reinterpret_cast<uint64_t *>(&extPanId) = UINT64_MAX;
+
+        while (*reinterpret_cast<uint64_t *>(&extPanId) == UINT64_MAX)
         {
             RandomFill(extPanId.m8, sizeof(extPanId.m8));
         }
@@ -255,6 +257,30 @@ void ThreadHelper::Attach(const std::string &         aNetworkName,
     SuccessOrExit(error = otThreadSetPskc(mInstance, &pskc));
 
     SuccessOrExit(error = otThreadSetEnabled(mInstance, true));
+exit:
+    if (error != OT_ERROR_NONE)
+    {
+        if (aHandler)
+        {
+            aHandler(error);
+        }
+        mAttachHandler = nullptr;
+    }
+}
+
+void ThreadHelper::Attach(ResultHandler aHandler)
+{
+    otError error = OT_ERROR_NONE;
+
+    VerifyOrExit(mAttachHandler == nullptr && mJoinerHandler == nullptr, error = OT_ERROR_INVALID_STATE);
+    mAttachHandler = aHandler;
+
+    if (!otIp6IsEnabled(mInstance))
+    {
+        SuccessOrExit(error = otIp6SetEnabled(mInstance, true));
+    }
+    SuccessOrExit(error = otThreadSetEnabled(mInstance, true));
+
 exit:
     if (error != OT_ERROR_NONE)
     {

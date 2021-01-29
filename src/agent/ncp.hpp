@@ -62,13 +62,18 @@ namespace Ncp {
  */
 enum
 {
-    kEventExtPanId,         ///< Extended PAN ID arrived.
-    kEventNetworkName,      ///< Network name arrived.
-    kEventPSKc,             ///< PSKc arrived.
-    kEventThreadState,      ///< Thread State.
-    kEventThreadVersion,    ///< Thread Version.
-    kEventUdpForwardStream, ///< UDP forward stream arrived.
+    kEventExtPanId,                        ///< Extended PAN ID arrived.
+    kEventNetworkName,                     ///< Network name arrived.
+    kEventPSKc,                            ///< PSKc arrived.
+    kEventThreadState,                     ///< Thread State.
+    kEventThreadVersion,                   ///< Thread Version.
+    kEventUdpForwardStream,                ///< UDP forward stream arrived.
+    kEventBackboneRouterState,             ///< Backbone Router State.
+    kEventBackboneRouterDomainPrefixEvent, ///< Backbone Router Domain Prefix event.
+    kEventBackboneRouterNdProxyEvent,      ///< Backbone Router ND Proxy event arrived.
 };
+
+using PowerMap = std::map<std::string, std::vector<int8_t>>;
 
 /**
  * This interface defines NCP Controller functionality.
@@ -131,11 +136,14 @@ public:
     /**
      * This method creates a NCP Controller.
      *
-     * @param[in]   aInterfaceName  A string of the NCP interface name.
-     * @param[in]   aRadioUrl       The URL describes the radio chip.
+     * @param[in]   aInterfaceName          A string of the NCP interface name.
+     * @param[in]   aRadioUrl               The URL describes the radio chip.
+     * @param[in]   aBackboneInterfaceName  The Backbone network interface name.
      *
      */
-    static Controller *Create(const char *aInterfaceName, const char *aRadioUrl);
+    static Controller *Create(const char *aInterfaceName,
+                              const char *aRadioUrl,
+                              const char *aBackboneInterfaceName = nullptr);
 
     /**
      * This method destroys a NCP Controller.

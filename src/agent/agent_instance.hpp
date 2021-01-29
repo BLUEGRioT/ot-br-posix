@@ -42,6 +42,7 @@
 #include <sys/types.h>
 
 #include "agent/border_agent.hpp"
+#include "agent/instance_params.hpp"
 #include "agent/ncp.hpp"
 
 namespace otbr {
